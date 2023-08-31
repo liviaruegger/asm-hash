@@ -4,6 +4,9 @@ assemble:
 	rm src/hash.o
 	mv hash exec/
 
+test-asm: assemble
+	./test/test-asm.sh
+
 test-py:
 	./test/test-py.sh
 
