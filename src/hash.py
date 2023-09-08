@@ -62,7 +62,7 @@ saida_passo_3 = [0] * 48
 for i in range(n + 1):
     for j in range(16):
         saida_passo_3[16 + j] = saida_passo_2[i * 16 + j]
-        saida_passo_3[2 * 16 + j] = saida_passo_3[16 + j] ^ saida_passo_3[j]
+        saida_passo_3[32 + j] = saida_passo_3[16 + j] ^ saida_passo_3[j]
     
     temp = 0
     for j in range(18):
