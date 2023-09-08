@@ -41,7 +41,9 @@ _start:
     ; syscall
     ; ---------------------------------------
 
-    ;;; Passo 1 - Ajuste do tamanho --------------------------------------------
+    ;---------------------------------------------------------------------------
+    ; Passo 1 - Ajuste do tamanho ----------------------------------------------
+    ;---------------------------------------------------------------------------
     
     ; Calcular o tamanho da saída do passo 1, que é o tamanho da
     ; entrada + 16 - (tamanho % 16). obs: o dividendo já está em ax
@@ -72,7 +74,84 @@ _start:
     ; syscall 
     ; ---------------------------------------
 
-    ;;; Passo 2 - Cálculo e concatenação dos XOR -------------------------------
+    ;---------------------------------------------------------------------------
+    ; Passo 2 - Cálculo e concatenação dos XOR ---------------------------------
+    ;---------------------------------------------------------------------------
+    
+    ; Encontrar n (número de blocos de 16 bytes)
+    mov     rax,    [tamanho_p1]
+    mov     bl,     16
+    div     bl          ; quociente em al, resto em ah
+    mov     [n],    al
+
+    ; Calcular o tamanho da saída do passo 2, que é o tamanho do passo 1
+    ; mais 16 bytes
+    mov    rdx,             [tamanho_p1]
+    add    rdx,             16
+    mov    [tamanho_p2],    dl
+
+    ; Preencher o espaço do novo bloco com zeros
+    xor     rcx,    rcx             ; zerar rcx
+    mov     cl,     [tamanho_p1]    ; começar no fim do passo 1
+    
+    novo_bloco:
+    mov     byte        [entrada + rcx],    0
+    inc     rcx
+    cmp     rcx,        rdx     ; comparar com o tamanho do passo 2 (já em rdx)
+    jne     novo_bloco
+
+    ; 'novo_valor' ficará em rbx
+    xor     rbx,    rbx     ; zerar rbx
+
+    ; Loop externo: i varia [0, n] - (rcx)
+    ; Loop interno: j varia [0, 16] - (rdx)
+    mov     rcx,    0    ; inicializa i = 0
+
+    laco_externo_p2:    ; i = rcx
+    mov     rdx,    0   ; inicializa j = 0
+
+    laco_interno_p2:    ; j = rdx
+
+    ; Lembrando o uso dos registradores:
+    ; rax: usar para calcular index
+    ; rbx: novo_valor
+    ; rcx: i (contador loop externo)
+    ; rdx: j (contador loop interno)
+
+    ; Preciso de i * 16 (lembrando que i está em rcx)
+    mov     al,     16      ; al guarda o multiplicador
+    mul     cl              ; rax = al * cl = i * 16
+
+    ; Calcular index = saida_passo_1[i * 16 + j] ^ novo_valor
+    ; lembrando: saida_passo_1[i * 16 + j] = [entrada + rax + rdx]
+    ; guardarei o index em al
+    mov     rbp,    rax     ; copiar rax para rbp, pois vou mexer no al
+    mov     al,     [entrada + rbp + rdx]   ; al = saida_passo_1[i * 16 + j]
+    xor     al,     bl      ; al = saida_passo_1[i * 16 + j] ^ novo_valor
+
+    ; Novo valor = VETOR_MAGICO[index] ^ novo_bloco[j]
+    ; Primeiro vou guar novo_bloco[j] em bl
+    mov     rbp,    [tamanho_p1]
+    mov     bl,     [entrada + rbp + rdx]
+    ; XOR com VETOR_MAGICO[index] (index está em al)
+    movzx   rax,    al  ; manter al, zerar os outros bytes de rax
+    xor     bl,     [VETOR_MAGICO + rax]    ; novo_valor em bl
+    ; Fazer: novo_bloco[j] = novo_valor
+    mov     [entrada + rbp + rdx],      bl
+
+    ; Burocracias do laço interno...
+    inc     rdx
+    cmp     rdx,    16
+    jne     laco_interno_p2     ; se j < 16, continua o laço interno
+
+    ; Burocracias do laço externo...
+    inc     rcx
+    cmp     rcx,    [n]
+    jne     laco_externo_p2     ; se i < n, continua o laço externo
+
+    ;---------------------------------------------------------------------------
+    ; Passo 3 - Transformação dos n+1 blocos em apenas 3 blocos ----------------
+    ;---------------------------------------------------------------------------
 
 
     ; Sair do programa
@@ -86,14 +165,16 @@ section .bss
 
 debug:          resb    1
 
-entrada:        resb    100001
+entrada:        resb    100016
 tamanho:        resb    1
 
 ; saida_p1:       resb    100000  ; não usado
 tamanho_p1:     resb    1
 
-saida_p2:       resb    100016
+; saida_p2:       resb    100016  ; não usado
 tamanho_p2:     resb    1
+
+n:              resb    1
 
 saida_p3:       resb    48
 
