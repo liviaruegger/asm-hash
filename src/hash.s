@@ -41,9 +41,9 @@ _start:
     ; syscall
     ; ---------------------------------------
 
-    ;---------------------------------------------------------------------------
-    ; Passo 1 - Ajuste do tamanho ----------------------------------------------
-    ;---------------------------------------------------------------------------
+;------------------------------------------------------------------------------;
+; Passo 1 - Ajuste do tamanho                                                  ;
+;------------------------------------------------------------------------------;
     
     ; Calcular o tamanho da saída do passo 1, que é o tamanho da
     ; entrada + 16 - (tamanho % 16). obs: o dividendo já está em ax
@@ -59,7 +59,7 @@ _start:
     xor     rcx,    rcx         ; zerar RCX
     mov     cl,     [tamanho]
     
-    preencher:
+preencher:
     mov     byte        [entrada + rcx],    bl
     inc     rcx
     cmp     rcx,        rdx
@@ -74,9 +74,9 @@ _start:
     ; syscall 
     ; ---------------------------------------
 
-    ;---------------------------------------------------------------------------
-    ; Passo 2 - Cálculo e concatenação dos XOR ---------------------------------
-    ;---------------------------------------------------------------------------
+;------------------------------------------------------------------------------;
+; Passo 2 - Cálculo e concatenação dos XOR                                     ;
+;------------------------------------------------------------------------------;
     
     ; Encontrar n (número de blocos de 16 bytes)
     mov     rax,    [tamanho_p1]
@@ -94,7 +94,7 @@ _start:
     xor     rcx,    rcx             ; zerar rcx
     mov     cl,     [tamanho_p1]    ; começar no fim do passo 1
     
-    novo_bloco:
+novo_bloco:
     mov     byte        [entrada + rcx],    0
     inc     rcx
     cmp     rcx,        rdx     ; comparar com o tamanho do passo 2 (já em rdx)
@@ -104,13 +104,12 @@ _start:
     xor     rbx,    rbx     ; zerar rbx
 
     ; Loop externo: i varia [0, n] - (rcx)
+    mov     rcx,    0   ; inicializa i = 0
+laco_externo_p2:    ; i = rcx
+    
     ; Loop interno: j varia [0, 16] - (rdx)
-    mov     rcx,    0    ; inicializa i = 0
-
-    laco_externo_p2:    ; i = rcx
     mov     rdx,    0   ; inicializa j = 0
-
-    laco_interno_p2:    ; j = rdx
+laco_interno_p2:    ; j = rdx
 
     ; Lembrando o uso dos registradores:
     ; rax: usar para calcular index
@@ -149,11 +148,81 @@ _start:
     cmp     rcx,    [n]
     jne     laco_externo_p2     ; se i < n, continua o laço externo
 
-    ;---------------------------------------------------------------------------
-    ; Passo 3 - Transformação dos n+1 blocos em apenas 3 blocos ----------------
-    ;---------------------------------------------------------------------------
+    ; Atualizar o número de blocos
+    inc     byte    [n]
+
+;------------------------------------------------------------------------------;
+; Passo 3 - Transformação dos n+1 blocos em apenas 3 blocos                    ;
+;------------------------------------------------------------------------------;
+
+    ; Preencher os 48 bytes de saida_p3 com zeros
+    xor     rcx,    rcx     ; zerar rcx
+    
+zerar:
+    mov     byte    [saida_p3 + rcx],   0
+    inc     rcx
+    cmp     rcx,    48
+    jne     zerar
+
+    ; Loop nivel 0 (externo): i varia [0, n] - (rcx)
+    mov     rcx,    0   ; inicializa i = 0
+laco_nivel0:        ; i = rcx
+
+    ; Loop nivel 1: j varia [0, 16] - (rdx)
+    mov     rdx,    0   ; inicializa j = 0
+laco1_nivel1:       ; j = rdx
+
+    ; TODO
 
 
+;------------------------------------------------------------------------------;
+; Passo 4 - Definição do hash como um valor em hexadecimal                     ;
+;------------------------------------------------------------------------------;
+    
+    xor     rcx,    rcx         ; zerar rcx
+    
+    ; Inicializar os ponteiros
+    mov     rsi,    hash        ; iterar pela string hexadecimal
+    mov     rdi,    saida_p3    ; iterar pelos primeiros 16 bytes de saida_p3
+
+converter:
+    ; Levar um byte da saída do passo 3 para al
+    xor     rax,    rax
+    mov     al,     [rdi]
+
+    ; Converter o byte para dois valores [0,16[
+    mov     ah,     al
+    shr     ah,     4
+    and     al,     0xF
+
+    ; Antes de colocar na hash (rsi), preciso pegar o caractere equivalente;
+    ; Vou colocar o valor em rcx para usar como "índice" do vetor HEX_CHARS
+    mov     cl,         ah
+    mov     dl,         [HEX_CHARS + rcx]
+    mov     [rsi],      dl                  ; primeiro char movido p/ hash
+    mov     cl,         al
+    mov     dl,         [HEX_CHARS + rcx]
+    mov     [rsi + 1],  dl                  ; segundo char movido p/ hash
+
+    ; Atualizar os ponteiros
+    add     rsi,    2
+    inc     rdi
+
+    ; Verificar se terminou de converter os 16 bytes
+    cmp     rsi,        hash + 32
+    jnz     converter
+
+    ; Adicionar uma quebra de linha ao final da string
+    mov     byte    [rsi],  10
+
+    ; Agora hash contém a representação em string hexadecimal dos 16 bytes
+    ; Imprimir saída em stdout:
+    mov     rax,    SYS_WRITE
+    mov     rdi,    STDOUT
+    mov     rsi,    hash        ; rsi = endereço da string
+    mov     rdx,    33          ; rdx = tamanho da string
+    syscall
+    
     ; Sair do programa
     mov     rax,    SYS_EXIT
     mov     rdi,    0
@@ -191,6 +260,6 @@ SYS_EXIT:       equ     60
 STDIN:          equ     0
 STDOUT:         equ     1
 
-HEX_CHARS:      db      "0123456789ABCDEF"  ; Tabela de caracteres hexadecimais
+HEX_CHARS:      db      "0123456789abcdef"  ; Tabela de caracteres hexadecimais
 
 VETOR_MAGICO:   db      122, 77, 153, 59, 173, 107, 19, 104, 123, 183, 75, 10, 114, 236, 106, 83, 117, 16, 189, 211, 51, 231, 143, 118, 248, 148, 218, 245, 24, 61, 66, 73, 205, 185, 134, 215, 35, 213, 41, 0, 174, 240, 177, 195, 193, 39, 50, 138, 161, 151, 89, 38, 176, 45, 42, 27, 159, 225, 36, 64, 133, 168, 22, 247, 52, 216, 142, 100, 207, 234, 125, 229, 175, 79, 220, 156, 91, 110, 30, 147, 95, 191, 96, 78, 34, 251, 255, 181, 33, 221, 139, 119, 197, 63, 40, 121, 204, 4, 246, 109, 88, 146, 102, 235, 223, 214, 92, 224, 242, 170, 243, 154, 101, 239, 190, 15, 249, 203, 162, 164, 199, 113, 179, 8, 90, 141, 62, 171, 232, 163, 26, 67, 167, 222, 86, 87, 71, 11, 226, 165, 209, 144, 94, 20, 219, 53, 49, 21, 160, 115, 145, 17, 187, 244, 13, 29, 25, 57, 217, 194, 74, 200, 23, 182, 238, 128, 103, 140, 56, 252, 12, 135, 178, 152, 84, 111, 126, 47, 132, 99, 105, 237, 186, 37, 130, 72, 210, 157, 184, 3, 1, 44, 69, 172, 65, 7, 198, 206, 212, 166, 98, 192, 28, 5, 155, 136, 241, 208, 131, 124, 80, 116, 127, 202, 201, 58, 149, 108, 97, 60, 48, 14, 93, 81, 158, 137, 2, 227, 253, 68, 43, 120, 228, 169, 112, 54, 250, 129, 46, 188, 196, 85, 150, 6, 254, 180, 233, 230, 31, 76, 55, 18, 9, 32, 82, 70
