@@ -1,6 +1,6 @@
 """
-MAC0216 - EP1
-Ana Lívia Rüegger Saldanha
+MAC0216 - EP1: Algoritmo de hash em Python
+Autora: Ana Lívia Rüegger Saldanha
 """
 
 
