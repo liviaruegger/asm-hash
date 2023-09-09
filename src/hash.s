@@ -16,30 +16,10 @@ _start:
     mov     rdi,    STDIN
     syscall
 
-    ; ---------------------------------------
-    ; DEBUG: printar o que eu li do teclado
-    ; mov     rax,    SYS_WRITE
-    ; mov     rdi,    STDOUT
-    ; mov     rsi,    entrada     ; rsi = endereço da string
-    ; mov     rdx,    100001      ; rdx = tamanho da string
-    ; syscall 
-    ; ---------------------------------------
-
     ; Armazenar o tamanho da string lida em 'tamanho', lembrando que
     ; o último caractere lido é o '\n', que não deve ser considerado
     dec     rax
     mov     [tamanho],  al
-
-    ; ---------------------------------------
-    ; DEBUG: printar o tamanho da string lida
-    ; add al, '0'         ; transformar em caractere - funciona até 9 apenas
-    ; mov [debug], al     ; armazenar em debug para printar (precisa ser vetor?)
-    ; mov     rax,    SYS_WRITE
-    ; mov     rdi,    STDOUT
-    ; mov     rsi,    debug
-    ; mov     rdx,    1        ; tamanho da string
-    ; syscall
-    ; ---------------------------------------
 
 ;------------------------------------------------------------------------------;
 ; Passo 1 - Ajuste do tamanho                                                  ;
@@ -64,15 +44,6 @@ preencher:
     inc     rcx
     cmp     rcx,        rdx
     jne     preencher
-
-    ; ---------------------------------------
-    ; DEBUG: printar a string com padding
-    ; mov     rax,    SYS_WRITE
-    ; mov     rdi,    STDOUT
-    ; mov     rsi,    entrada         ; rsi = endereço da string
-    ; mov     rdx,    [tamanho_p1]    ; rdx = tamanho da string
-    ; syscall 
-    ; ---------------------------------------
 
 ;------------------------------------------------------------------------------;
 ; Passo 2 - Cálculo e concatenação dos XOR                                     ;
@@ -164,16 +135,67 @@ zerar:
     cmp     rcx,    48
     jne     zerar
 
-    ; Loop nivel 0 (externo): i varia [0, n] - (rcx)
+    ; Loop nivel 0 (externo): i varia [0, n[ - (rcx) ===========================
     mov     rcx,    0   ; inicializa i = 0
-laco_nivel0:        ; i = rcx
+laco_nivel0:            ; i = rcx
 
-    ; Loop nivel 1: j varia [0, 16] - (rdx)
+    ; Loop nivel 1: j varia [0, 16[ - (rdx) ____________________________________
     mov     rdx,    0   ; inicializa j = 0
-laco1_nivel1:       ; j = rdx
+laco1_nivel1:           ; j = rdx
 
-    ; TODO
+    ; saida_passo_3[16 + j] = saida_passo_2[i * 16 + j]
+    mov     al,     16                      ; al guarda o multiplicador
+    mul     cl                              ; rax = al * cl = i * 16
+    mov     bl,     [entrada + rax + rdx]   ; bl = saida_passo_2[i * 16 + j]
+    mov     [saida_p3 + 16 + rdx],  bl      ; saida_passo_3[16 + j] = bl
 
+    ; saida_passo_3[32 + j] = saida_passo_3[16 + j] ^ saida_passo_3[j]
+    xor     bl,     [saida_p3 + rdx]
+    mov     [saida_p3 + 32 + rdx],  bl 
+
+    ; Burocracias do laço nivel 1...
+    inc     rdx
+    cmp     rdx,    16
+    jne     laco1_nivel1    ; se j == 16, sai do laço __________________________
+
+    xor     rbx,    rbx     ; variável 'temp' (bl)
+
+    ; Outro loop nivel 1: j varia [0, 18[ - (rdx) ______________________________
+    mov     rdx,    0   ; inicializa j = 0                   inicio laco2_nivel1
+laco2_nivel1:           ; j = rdx
+
+    ; TODO - O ERRO ESTÁ NESTE LOOP ABAIXO - LOOP INFINITO?
+    ; Loop nivel 2: k varia [0, 48[ - (rbp) ------------------------------------
+    mov     rbp,    0   ; inicializa k = 0
+laco_nivel2:            ; k = rbp
+
+    ; temp = saida_passo_3[k] ^ VETOR_MAGICO[temp]
+    mov     al,     [VETOR_MAGICO + rbx]                ; <<<<<< ???
+    xor     al,     [saida_p3 + rbp]                    ; <<<<<< ???
+    mov     bl,     al                                  ; <<<<<< ???
+
+    ; saida_passo_3[k] = temp
+    mov     [saida_p3 + rbp],   bl                      ; <<<<<< ???
+
+    ; Burocracias do laço nivel 2...
+    inc     rbp
+    cmp     rbp,    48
+    jne     laco_nivel2     ; se k == 48, sai do laço --------------------------
+
+    ; temp = (temp + j) % 256
+    add     rbx,    rdx     ; rbx = temp + j
+    and     rbx,    0xFF    ; máscara bits mais significativos (mod 256)
+
+    ; Burocracias do laço nivel 1...
+    inc     rdx
+    cmp     rdx,    18
+    jne     laco2_nivel1    ; se j == 18, sai do laço __________________________
+    ;                                                           fim laco2_nivel1
+    
+    ; Burocracias do laço nivel 0 (externo)...
+    inc     rcx
+    cmp     rcx,    [n]
+    jne     laco_nivel0     ; se i == n, sai do laço ===========================
 
 ;------------------------------------------------------------------------------;
 ; Passo 4 - Definição do hash como um valor em hexadecimal                     ;
@@ -247,7 +269,7 @@ n:              resb    1
 
 saida_p3:       resb    48
 
-hash:           resb    32  ; Saída em hex (16 bytes * 2 caracteres por byte)
+hash:           resb    33  ; Saída em hex (16 bytes * 2 caracteres/byte + '\n')
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
