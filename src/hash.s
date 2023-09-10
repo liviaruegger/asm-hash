@@ -19,30 +19,30 @@ _start:
     ; Armazenar o tamanho da string lida em 'tamanho', lembrando que
     ; o último caractere lido é o '\n', que não deve ser considerado
     dec     rax
-    mov     [tamanho],  al
+    mov     [tamanho],  eax
 
 ;------------------------------------------------------------------------------;
 ; Passo 1 - Ajuste do tamanho                                                  ;
 ;------------------------------------------------------------------------------;
     
     ; Calcular o tamanho da saída do passo 1, que é o tamanho da
-    ; entrada + 16 - (tamanho % 16). obs: o dividendo já está em ax
-    mov     bl,             16          ; valor em bl será o divisor (opernado)
+    ; entrada + 16 - (tamanho % 16). obs: o dividendo já está em eax
+    mov     bl,             16          ; valor em bl será o divisor (operando)
     div     bl                          ; quociente em al, resto em ah
     mov     rdx,            16
     sub     dl,             ah          ; dl = 16 - (tamanho % 16)
     mov     rbx,            rdx         ; guardar para usar no preenchimento
     add     rdx,            [tamanho]
-    mov     [tamanho_p1],   dl
+    mov     [tamanho_p1],   rdx
 
     ; Realizar o preenchimento (padding)
     xor     rcx,    rcx         ; zerar RCX
-    mov     cl,     [tamanho]
+    mov     ecx,    [tamanho]
     
 preencher:
     mov     byte        [entrada + rcx],    bl
     inc     rcx
-    cmp     rcx,        rdx
+    cmp     ecx,        edx
     jne     preencher
 
 ;------------------------------------------------------------------------------;
@@ -50,68 +50,70 @@ preencher:
 ;------------------------------------------------------------------------------;
     
     ; Encontrar n (número de blocos de 16 bytes)
-    mov     rax,    [tamanho_p1]
-    mov     bl,     16
-    div     bl          ; quociente em al, resto em ah
-    mov     [n],    al
+    mov     eax,    [tamanho_p1]
+    mov     ebx,    16
+    xor     edx,    edx             ; zerar edx para evitar divisão por zero
+    div     ebx                     ; quociente em eax, resto em edx
+    mov     [n],    eax
 
-    ; Calcular o tamanho da saída do passo 2, que é o tamanho do passo 1
-    ; mais 16 bytes
-    mov    rdx,             [tamanho_p1]
-    add    rdx,             16
-    mov    [tamanho_p2],    dl
+    ; Calcular o tamanho da saída do passo 2,
+    ; que é o tamanho do passo 1 mais 16 bytes
+    mov    edx,             [tamanho_p1]
+    add    edx,             16
+    mov    [tamanho_p2],    edx
 
     ; Preencher o espaço do novo bloco com zeros
     xor     rcx,    rcx             ; zerar rcx
-    mov     cl,     [tamanho_p1]    ; começar no fim do passo 1
+    mov     ecx,    [tamanho_p1]    ; começar no fim do passo 1
     
 novo_bloco:
     mov     byte        [entrada + rcx],    0
     inc     rcx
-    cmp     rcx,        rdx     ; comparar com o tamanho do passo 2 (já em rdx)
+    cmp     ecx,        edx     ; comparar com o tamanho do passo 2 (já em edx)
     jne     novo_bloco
 
     ; 'novo_valor' ficará em rbx
     xor     rbx,    rbx     ; zerar rbx
 
-    ; Loop externo: i varia [0, n] - (rcx)
+    ; Loop externo: i varia [0, n[ - (rcx)
     mov     rcx,    0   ; inicializa i = 0
-laco_externo_p2:    ; i = rcx
+laco_externo_p2:        ; i = rcx
     
-    ; Loop interno: j varia [0, 16] - (rdx)
-    mov     rdx,    0   ; inicializa j = 0
-laco_interno_p2:    ; j = rdx
+    ; Loop interno: j varia [0, 16[ - (rdi)
+    mov     rdi,    0   ; inicializa j = 0
+laco_interno_p2:        ; j = rdi
 
     ; Lembrando o uso dos registradores:
     ; rax: usar para calcular index
     ; rbx: novo_valor
     ; rcx: i (contador loop externo)
-    ; rdx: j (contador loop interno)
+    ; rdi: j (contador loop interno)
 
     ; Preciso de i * 16 (lembrando que i está em rcx)
-    mov     al,     16      ; al guarda o multiplicador
-    mul     cl              ; rax = al * cl = i * 16
+    mov     eax,    16  ; eax guarda o multiplicador
+    mul     ecx         ; eax = i * 16 (resultado vai sempre caber em 32 bits)
 
     ; Calcular index = saida_passo_1[i * 16 + j] ^ novo_valor
-    ; lembrando: saida_passo_1[i * 16 + j] = [entrada + rax + rdx]
+    ; lembrando: saida_passo_1[i * 16 + j] = [entrada + rax + rdi]
     ; guardarei o index em al
-    mov     rbp,    rax     ; copiar rax para rbp, pois vou mexer no al
-    mov     al,     [entrada + rbp + rdx]   ; al = saida_passo_1[i * 16 + j]
+    mov     rbp,    rax     ; copiar eax para rbp, pois vou mexer no al
+    mov     al,     [entrada + rbp + rdi]   ; al = saida_passo_1[i * 16 + j]
     xor     al,     bl      ; al = saida_passo_1[i * 16 + j] ^ novo_valor
 
     ; Novo valor = VETOR_MAGICO[index] ^ novo_bloco[j]
-    ; Primeiro vou guar novo_bloco[j] em bl
-    mov     rbp,    [tamanho_p1]
-    mov     bl,     [entrada + rbp + rdx]
+    ; Primeiro vou guardar novo_bloco[j] em bl
+    xor     rdx,    rdx
+    mov     edx,    [tamanho_p1]
+    mov     bl,     [entrada + rdx + rdi]
     ; XOR com VETOR_MAGICO[index] (index está em al)
     movzx   rax,    al  ; manter al, zerar os outros bytes de rax
     xor     bl,     [VETOR_MAGICO + rax]    ; novo_valor em bl
     ; Fazer: novo_bloco[j] = novo_valor
-    mov     [entrada + rbp + rdx],      bl
+    mov     [entrada + rdx + rdi],      bl
 
     ; Burocracias do laço interno...
-    inc     rdx
-    cmp     rdx,    16
+    inc     rdi
+    cmp     rdi,    16
     jne     laco_interno_p2     ; se j < 16, continua o laço interno
 
     ; Burocracias do laço externo...
@@ -139,43 +141,42 @@ zerar:
     mov     rcx,    0   ; inicializa i = 0
 laco_nivel0:            ; i = rcx
 
-    ; Loop nivel 1: j varia [0, 16[ - (rdx) ____________________________________
-    mov     rdx,    0   ; inicializa j = 0
-laco1_nivel1:           ; j = rdx
+    ; Loop nivel 1: j varia [0, 16[ - (rdi) ____________________________________
+    mov     rdi,    0   ; inicializa j = 0
+laco1_nivel1:           ; j = rdi
 
     ; saida_passo_3[16 + j] = saida_passo_2[i * 16 + j]
     mov     al,     16                      ; al guarda o multiplicador
     mul     cl                              ; rax = al * cl = i * 16
-    mov     bl,     [entrada + rax + rdx]   ; bl = saida_passo_2[i * 16 + j]
-    mov     [saida_p3 + 16 + rdx],  bl      ; saida_passo_3[16 + j] = bl
+    mov     bl,     [entrada + rax + rdi]   ; bl = saida_passo_2[i * 16 + j]
+    mov     [saida_p3 + 16 + rdi],  bl      ; saida_passo_3[16 + j] = bl
 
     ; saida_passo_3[32 + j] = saida_passo_3[16 + j] ^ saida_passo_3[j]
-    xor     bl,     [saida_p3 + rdx]
-    mov     [saida_p3 + 32 + rdx],  bl 
+    xor     bl,     [saida_p3 + rdi]
+    mov     [saida_p3 + 32 + rdi],  bl 
 
     ; Burocracias do laço nivel 1...
-    inc     rdx
-    cmp     rdx,    16
+    inc     rdi
+    cmp     rdi,    16
     jne     laco1_nivel1    ; se j == 16, sai do laço __________________________
 
     xor     rbx,    rbx     ; variável 'temp' (bl)
 
-    ; Outro loop nivel 1: j varia [0, 18[ - (rdx) ______________________________
-    mov     rdx,    0   ; inicializa j = 0                   inicio laco2_nivel1
-laco2_nivel1:           ; j = rdx
+    ; Outro loop nivel 1: j varia [0, 18[ - (rdi) ______________________________
+    mov     rdi,    0   ; inicializa j = 0                   inicio laco2_nivel1
+laco2_nivel1:           ; j = rdi
 
-    ; TODO - O ERRO ESTÁ NESTE LOOP ABAIXO - LOOP INFINITO?
     ; Loop nivel 2: k varia [0, 48[ - (rbp) ------------------------------------
     mov     rbp,    0   ; inicializa k = 0
 laco_nivel2:            ; k = rbp
 
-    ; temp = saida_passo_3[k] ^ VETOR_MAGICO[temp]
-    mov     al,     [VETOR_MAGICO + rbx]                ; <<<<<< ???
-    xor     al,     [saida_p3 + rbp]                    ; <<<<<< ???
-    mov     bl,     al                                  ; <<<<<< ???
-
-    ; saida_passo_3[k] = temp
-    mov     [saida_p3 + rbp],   bl                      ; <<<<<< ???
+    ;; temp = saida_passo_3[k] ^ VETOR_MAGICO[temp]
+    ;mov     al,     [VETOR_MAGICO + rbx]                ; <<<<<< ???
+    ;xor     al,     [saida_p3 + rbp]                    ; <<<<<< ???
+    ;mov     bl,     al                                  ; <<<<<< ???
+;
+    ;; saida_passo_3[k] = temp
+    ;mov     [saida_p3 + rbp],   bl                      ; <<<<<< ???
 
     ; Burocracias do laço nivel 2...
     inc     rbp
@@ -183,12 +184,12 @@ laco_nivel2:            ; k = rbp
     jne     laco_nivel2     ; se k == 48, sai do laço --------------------------
 
     ; temp = (temp + j) % 256
-    add     rbx,    rdx     ; rbx = temp + j
+    add     rbx,    rdi     ; rbx = temp + j
     and     rbx,    0xFF    ; máscara bits mais significativos (mod 256)
 
     ; Burocracias do laço nivel 1...
-    inc     rdx
-    cmp     rdx,    18
+    inc     rdi
+    cmp     rdi,    18
     jne     laco2_nivel1    ; se j == 18, sai do laço __________________________
     ;                                                           fim laco2_nivel1
     
@@ -254,18 +255,13 @@ converter:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 section .bss
 
-debug:          resb    1
-
 entrada:        resb    100016
-tamanho:        resb    1
+tamanho:        resd    1
 
-; saida_p1:       resb    100000  ; não usado
-tamanho_p1:     resb    1
+tamanho_p1:     resd    1
+tamanho_p2:     resd    1
 
-; saida_p2:       resb    100016  ; não usado
-tamanho_p2:     resb    1
-
-n:              resb    1
+n:              resd    1
 
 saida_p3:       resb    48
 
