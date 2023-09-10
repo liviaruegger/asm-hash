@@ -36,7 +36,7 @@ _start:
     mov     [tamanho_p1],   rdx
 
     ; Realizar o preenchimento (padding)
-    xor     rcx,    rcx         ; zerar RCX
+    xor     rcx,    rcx
     mov     ecx,    [tamanho]
     
 preencher:
@@ -63,7 +63,7 @@ preencher:
     mov    [tamanho_p2],    edx
 
     ; Preencher o espaço do novo bloco com zeros
-    xor     rcx,    rcx             ; zerar rcx
+    xor     rcx,    rcx
     mov     ecx,    [tamanho_p1]    ; começar no fim do passo 1
     
 novo_bloco:
@@ -73,50 +73,43 @@ novo_bloco:
     jne     novo_bloco
 
     ; 'novo_valor' ficará em rbx
-    xor     rbx,    rbx     ; zerar rbx
+    xor     rbx,    rbx
 
-    ; Loop externo: i varia [0, n[ - (rcx)
+    ; Loop externo: i varia [0, n[
     mov     rcx,    0   ; inicializa i = 0
 laco_externo_p2:        ; i = rcx
     
-    ; Loop interno: j varia [0, 16[ - (rdi)
+    ; Loop interno: j varia [0, 16[
     mov     rdi,    0   ; inicializa j = 0
 laco_interno_p2:        ; j = rdi
 
-    ; Lembrando o uso dos registradores:
-    ; rax: usar para calcular index
-    ; rbx: novo_valor
-    ; rcx: i (contador loop externo)
-    ; rdi: j (contador loop interno)
-
     ; Preciso de i * 16 (lembrando que i está em rcx)
-
     mov     eax,    16  ; eax guarda o multiplicador
     mul     ecx         ; eax = i * 16 (resultado vai sempre caber em 32 bits)
+    
     ; Calcular index = saida_passo_1[i * 16 + j] ^ novo_valor
-    ; lembrando: saida_passo_1[i * 16 + j] = [entrada + rax + rdi]
-    ; guardarei o index em al
-    mov     rbp,    rax     ; copiar eax para rbp, pois vou mexer no al
-    mov     al,     [entrada + rbp + rdi]   ; al = saida_passo_1[i * 16 + j]
-    xor     al,     bl      ; al = saida_passo_1[i * 16 + j] ^ novo_valor
+    ; Guardarei o index em al
+    mov     rbp,    rax
+    mov     al,     [entrada + rbp + rdi]
+    xor     al,     bl
 
     ; Novo valor = VETOR_MAGICO[index] ^ novo_bloco[j]
     ; Primeiro vou guardar novo_bloco[j] em bl
     xor     rdx,    rdx
     mov     edx,    [tamanho_p1]
     mov     bl,     [entrada + rdx + rdi]
+
     ; XOR com VETOR_MAGICO[index] (index está em al)
-    movzx   rax,    al  ; manter al, zerar os outros bytes de rax
+    movzx   rax,    al                      ; manter apenas al
     xor     bl,     [VETOR_MAGICO + rax]    ; novo_valor em bl
+    
     ; Fazer: novo_bloco[j] = novo_valor
     mov     [entrada + rdx + rdi],      bl
 
-    ; Burocracias do laço interno...
     inc     rdi
     cmp     rdi,    16
     jne     laco_interno_p2     ; se j < 16, continua o laço interno
 
-    ; Burocracias do laço externo...
     inc     rcx
     cmp     rcx,    [n]
     jne     laco_externo_p2     ; se i < n, continua o laço externo
@@ -129,7 +122,7 @@ laco_interno_p2:        ; j = rdi
 ;------------------------------------------------------------------------------;
 
     ; Preencher os 48 bytes de saida_p3 com zeros
-    xor     rcx,    rcx     ; zerar rcx
+    xor     rcx,    rcx
     
 zerar:
     mov     byte    [saida_p3 + rcx],   0
@@ -137,7 +130,7 @@ zerar:
     cmp     rcx,    48
     jne     zerar
 
-    ; Estrutura dos lacos:
+    ; Estrutura dos laços:
     ; laco1 {               i = r10
         ; laco2 {           j = r11
         ; }
@@ -157,7 +150,6 @@ laco2:  ; ______________________________________________________________________
     mov     rax,    16  ; eax guarda o multiplicador
     mul     r10         ; eax = i * 16 (resultado vai sempre caber em 32 bits)
 
-    ; A seguir, vou usar bl, portanto vou zerar rbx
     xor     rbx,    rbx
 
     ; saida_passo_3[16 + j] = saida_passo_2[i * 16 + j]
@@ -209,7 +201,7 @@ laco4:  ; ----------------------------------------------------------------------
 ; Passo 4 - Definição do hash como um valor em hexadecimal                     ;
 ;------------------------------------------------------------------------------;
     
-    xor     rcx,    rcx         ; zerar rcx
+    xor     rcx,    rcx
     
     ; Inicializar os ponteiros
     mov     rsi,    hash        ; iterar pela string hexadecimal
@@ -220,13 +212,13 @@ converter:
     xor     rax,    rax
     mov     al,     [rdi]
 
-    ; Converter o byte para dois valores [0,16[
+    ; Converter o byte para dois valores entre [0,16[
     mov     ah,     al
     shr     ah,     4
     and     al,     0xF
 
-    ; Antes de colocar na hash (rsi), preciso pegar o caractere equivalente;
-    ; Vou colocar o valor em rcx para usar como "índice" do vetor HEX_CHARS
+    ; Antes de colocar no hash (rsi), preciso pegar o caractere equivalente;
+    ; Vou colocar o valor em rcx para usar como índice do vetor HEX_CHARS
     mov     cl,         ah
     mov     dl,         [HEX_CHARS + rcx]
     mov     [rsi],      dl                  ; primeiro char movido p/ hash
