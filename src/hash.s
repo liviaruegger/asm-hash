@@ -27,13 +27,22 @@ _start:
     
     ; Calcular o tamanho da saída do passo 1, que é o tamanho da
     ; entrada + 16 - (tamanho % 16). obs: o dividendo já está em eax
-    mov     bl,             16          ; valor em bl será o divisor (operando)
-    div     bl                          ; quociente em al, resto em ah
-    mov     rdx,            16
-    sub     dl,             ah          ; dl = 16 - (tamanho % 16)
-    mov     rbx,            rdx         ; guardar para usar no preenchimento
-    add     rdx,            [tamanho]
-    mov     [tamanho_p1],   rdx
+    mov     ebx,            16          ; valor em ebx será o divisor (operando)
+    xor     edx,    edx
+    div     ebx                         ; quociente em eax, resto em edx
+
+    ; Se o resto for zero, não precisa de padding (pular para o passo 2)
+    mov     ecx,            [tamanho]
+    mov     [tamanho_p1],   ecx
+    cmp     edx,            0
+    je      passo2
+
+    ; Há resto, então segue para o padding
+    mov     rcx,            16
+    sub     ecx,            edx         ; ecx = 16 - (tamanho % 16)
+    mov     ebx,            ecx         ; guardar para usar no preenchimento
+    add     rcx,            [tamanho]
+    mov     [tamanho_p1],   ecx
 
     ; Realizar o preenchimento (padding)
     xor     rcx,    rcx
@@ -42,17 +51,18 @@ _start:
 preencher:
     mov     byte        [entrada + rcx],    bl
     inc     rcx
-    cmp     ecx,        edx
+    cmp     ecx,        [tamanho_p1]
     jne     preencher
 
 ;------------------------------------------------------------------------------;
 ; Passo 2 - Cálculo e concatenação dos XOR                                     ;
 ;------------------------------------------------------------------------------;
     
+passo2:
     ; Encontrar n (número de blocos de 16 bytes)
     mov     eax,    [tamanho_p1]
     mov     ebx,    16
-    xor     edx,    edx             ; zerar edx para evitar divisão por zero
+    xor     edx,    edx
     div     ebx                     ; quociente em eax, resto em edx
     mov     [n],    eax
 
@@ -89,7 +99,8 @@ laco_interno_p2:        ; j = rdi
     
     ; Calcular index = saida_passo_1[i * 16 + j] ^ novo_valor
     ; Guardarei o index em al
-    mov     rbp,    rax
+    xor     rbp,    rbp
+    mov     ebp,    eax
     mov     al,     [entrada + rbp + rdi]
     xor     al,     bl
 
