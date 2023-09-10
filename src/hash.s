@@ -90,9 +90,9 @@ laco_interno_p2:        ; j = rdi
     ; rdi: j (contador loop interno)
 
     ; Preciso de i * 16 (lembrando que i está em rcx)
+
     mov     eax,    16  ; eax guarda o multiplicador
     mul     ecx         ; eax = i * 16 (resultado vai sempre caber em 32 bits)
-
     ; Calcular index = saida_passo_1[i * 16 + j] ^ novo_valor
     ; lembrando: saida_passo_1[i * 16 + j] = [entrada + rax + rdi]
     ; guardarei o index em al
@@ -137,66 +137,73 @@ zerar:
     cmp     rcx,    48
     jne     zerar
 
-    ; Loop nivel 0 (externo): i varia [0, n[ - (rcx) ===========================
-    mov     rcx,    0   ; inicializa i = 0
-laco_nivel0:            ; i = rcx
+    ; Estrutura dos lacos:
+    ; laco1 {               i = r10
+        ; laco2 {           j = r11
+        ; }
+        ; laco3 {           j = r11
+            ; laco4 {       k = r12
+            ; }
+        ; }
+    ; }
 
-    ; Loop nivel 1: j varia [0, 16[ - (rdi) ____________________________________
-    mov     rdi,    0   ; inicializa j = 0
-laco1_nivel1:           ; j = rdi
+    mov     r10,    0
+laco1:  ; ======================================================================
+
+    mov     r11,    0
+laco2:  ; ______________________________________________________________________
+
+    ; Calcular i * 16 (lembrando que i está em r10)
+    mov     rax,    16  ; eax guarda o multiplicador
+    mul     r10         ; eax = i * 16 (resultado vai sempre caber em 32 bits)
+
+    ; A seguir, vou usar bl, portanto vou zerar rbx
+    xor     rbx,    rbx
 
     ; saida_passo_3[16 + j] = saida_passo_2[i * 16 + j]
-    mov     al,     16                      ; al guarda o multiplicador
-    mul     cl                              ; rax = al * cl = i * 16
-    mov     bl,     [entrada + rax + rdi]   ; bl = saida_passo_2[i * 16 + j]
-    mov     [saida_p3 + 16 + rdi],  bl      ; saida_passo_3[16 + j] = bl
+    mov     bl,                     [entrada + rax + r11]
+    mov     [saida_p3 + 16 + r11],  bl
 
     ; saida_passo_3[32 + j] = saida_passo_3[16 + j] ^ saida_passo_3[j]
-    xor     bl,     [saida_p3 + rdi]
-    mov     [saida_p3 + 32 + rdi],  bl 
+    xor     bl,                     [saida_p3 + r11]
+    mov     [saida_p3 + 32 + r11],  bl
 
-    ; Burocracias do laço nivel 1...
-    inc     rdi
-    cmp     rdi,    16
-    jne     laco1_nivel1    ; se j == 16, sai do laço __________________________
+    inc     r11
+    cmp     r11,    16
+    jne     laco2  ; ___________________________________________________________
 
-    xor     rbx,    rbx     ; variável 'temp' (bl)
+    ; Vou usar cl para variável temp, portanto vou zerar rcx
+    xor     rcx,    rcx
 
-    ; Outro loop nivel 1: j varia [0, 18[ - (rdi) ______________________________
-    mov     rdi,    0   ; inicializa j = 0                   inicio laco2_nivel1
-laco2_nivel1:           ; j = rdi
+    mov     r11,    0
+laco3:  ; ______________________________________________________________________
 
-    ; Loop nivel 2: k varia [0, 48[ - (rbp) ------------------------------------
-    mov     rbp,    0   ; inicializa k = 0
-laco_nivel2:            ; k = rbp
+    mov     r12,    0
+laco4:  ; ----------------------------------------------------------------------
 
-    ;; temp = saida_passo_3[k] ^ VETOR_MAGICO[temp]
-    ;mov     al,     [VETOR_MAGICO + rbx]                ; <<<<<< ???
-    ;xor     al,     [saida_p3 + rbp]                    ; <<<<<< ???
-    ;mov     bl,     al                                  ; <<<<<< ???
-;
-    ;; saida_passo_3[k] = temp
-    ;mov     [saida_p3 + rbp],   bl                      ; <<<<<< ???
+    xor     rdx,    rdx
 
-    ; Burocracias do laço nivel 2...
-    inc     rbp
-    cmp     rbp,    48
-    jne     laco_nivel2     ; se k == 48, sai do laço --------------------------
+    ; temp = saida_passo_3[k] ^ VETOR_MAGICO[temp]
+    mov     dl,                 [VETOR_MAGICO + rcx]
+    xor     dl,                 [saida_p3 + r12]
+    mov     cl,                 dl
+    mov     [saida_p3 + r12],   cl
 
-    ; temp = (temp + j) % 256
-    add     rbx,    rdi     ; rbx = temp + j
-    and     rbx,    0xFF    ; máscara bits mais significativos (mod 256)
-
-    ; Burocracias do laço nivel 1...
-    inc     rdi
-    cmp     rdi,    18
-    jne     laco2_nivel1    ; se j == 18, sai do laço __________________________
-    ;                                                           fim laco2_nivel1
+    inc     r12
+    cmp     r12,    48
+    jne     laco4  ; -----------------------------------------------------------
     
-    ; Burocracias do laço nivel 0 (externo)...
-    inc     rcx
-    cmp     rcx,    [n]
-    jne     laco_nivel0     ; se i == n, sai do laço ===========================
+    ; temp = (temp + j) % 256
+    add     rcx,    r11
+    movzx   rcx,    cl
+
+    inc     r11
+    cmp     r11,    18
+    jne     laco3  ; ___________________________________________________________
+
+    inc     r10
+    cmp     r10d,   [n]
+    jne     laco1  ; ===========================================================
 
 ;------------------------------------------------------------------------------;
 ; Passo 4 - Definição do hash como um valor em hexadecimal                     ;
