@@ -21,3 +21,10 @@ tar:
 	cp $(entrega) ep1-ana_livia_saldanha/
 	tar zcvf ep1-ana_livia_saldanha.tar.gz ep1-ana_livia_saldanha
 	rm -r ep1-ana_livia_saldanha
+
+gdb:
+	nasm -g -f elf64 src/hash.s
+	ld -o hash src/hash.o
+	rm src/hash.o
+	mv hash exec/
+	gdb exec/hash
