@@ -13,8 +13,10 @@ test-py:
 	./test/test-py.sh
 
 permission:
-	chmod u+r+x test-asm.sh
-	chmod u+r+x test-py.sh
+	chmod u+r+x test/test-asm.sh
+	chmod u+r+x test/test-py.sh
+	chmod u+r+x test/time-asm.sh
+	chmod u+r+x test/time-py.sh
 
 tar:
 	mkdir ep1-ana_livia_saldanha
@@ -28,3 +30,9 @@ gdb:
 	rm src/hash.o
 	mv hash exec/
 	gdb exec/hash
+
+time-asm:
+	./test/time-asm.sh
+
+time-py:
+	./test/time-py.sh
