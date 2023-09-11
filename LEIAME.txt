@@ -1,0 +1,76 @@
+------------------- EP01 -------------------
+MAC0216 - Técnicas de Programação I - 2s2023
+--------------------------------------------
+
+
+=== AUTORA ===
+
+Ana Lívia Rüegger Saldanha
+NUSP: 8586691
+ana.saldanha@usp.br
+
+
+=== DESCRIÇÃO ===
+
+Este projeto, realizado como Exercício Programa para a disciplina MAC0216 do
+IME-USP, apresenta implementações de um mesmo algoritmo de hash em Python3
+(arquivo .py) e em linguagem de montagem para arquitetura x86_64 (arquivo .s),
+com intuito de comparar o desempenho desses dois programas. Essa comparação é
+apresentada no relatório (relatorio.pdf).
+
+O algoritmo de hash apresentado é desenvolvido em quatro passos que foram
+implementados segundo a mesma lógica em ambos os programas. Estes devem receber,
+da entrada padrão, uma string contendo de 1 a 100000 caracteres ASCII e
+imprimir, na saída padrão, um hash produzido pelo algoritmo. Esse hash é uma
+string de 32 caracteres representando, em hexadecimal, valores referentes a
+16 bytes produzidos pela função.
+
+
+=== COMO GERAR O EXECUTÁVEL ===
+
+Para gerar o executável do programa em Assembly, deve-se executar as seguintes
+linhas de comando (em Linux 64-bits):
+
+Montar com:     nasm -f elf64 hash.s
+Linkar com:     ld -s -o hash hash.o
+
+
+=== COMO EXECUTAR ===
+
+Para executar o programa em Python, basta digitar a linha de comando:
+$   python3 hash.py
+
+Para executar o programa em Assembly, é preciso primeiro gerar o executável
+através dos comandos apresentados anteriormente. Gerado o executável 'hash',
+basta digitar a linha de comando:
+$   ./hash
+
+Em ambos os casos, ao executar o programa, deve-se fornecer uma string através
+da entrada padrão (contendo de 1 a 100000 caracteres ASCII). O programa, então,
+vai imprimir na saída padrão o hash correspondente (32 caracteres).
+
+
+=== TESTES ===
+
+Abaixo, estão reproduzidos alguns casos de teste, cada par representando uma
+entrada e a respectiva saída esperada.
+
+Entrada:    Ola mundo!
+Saída:      7ea2319be0d038908161b4e8c26bfc7a
+
+Entrada:    Ole mundo!
+Saída:      c0900a10ded215a7297b69d86d81e25a
+
+Entrada:    que tistreza
+Saída:      878561c1134d1fd53e9b36822e1914cc
+
+Entrada:    MAC0216 eh muito legal!
+Saída:      9bc1e12b591694d3354f658d46006f7a
+
+
+=== DEPENDÊNCIAS ===
+
+Montador:       NASM version 2.14.02
+Linker:         GNU ld (GNU Binutils for Ubuntu) 2.34
+Interpretador:  Python 3.11.3 64-bit
+SO:             x86_64 GNU/Linux
